@@ -48,6 +48,13 @@ This app was developed to work with a simple calendar events `RSS` feed and the 
 If you need to customize the `FeedEntry` model to save more fields to the database and/or map them differently, you will likely need to customize a `fetch_` method and a `get_method`. When you customize a `get_` method, **you will get a new endpoint** for your customized feed. A possible `custom.py` might look like this:
 
 ```
+from datetime import datetime
+from _config import db
+import feedparser
+from flask import request
+from _config import app
+
+
 class FeedEntry(db.Model):
     __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
