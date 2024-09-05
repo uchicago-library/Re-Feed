@@ -1,0 +1,84 @@
+/* Light theme */
+@media (prefers-color-scheme: light) {
+  :root, ::backdrop {
+    --bg: #fff;
+    --accent-bg: #f3f3f3;
+    --accent-hover: #737373;
+    --text: #333;
+    --text-light: #585858;
+    --border: #898ea4;
+    --accent: #800;
+    --accent-text: #fff;
+    --code: #d81b60;
+    --preformatted: #444;
+    --marked: #ffdd33;
+    --disabled: #efefef;
+  }
+}
+
+/* Dark theme */
+@media (prefers-color-scheme: dark) {
+  :root, ::backdrop {
+    --bg: #222;
+    --border: #a6a6a6;
+    --accent: #b46a55;
+    --accent-bg: #404040;
+    --accent-hover: #d9d9d9;
+    --text: #f3f3f3;
+    --text-light: #f3f3f3;
+    --code: #f06292;
+    --preformatted: #ccc;
+    --disabled: #111;
+  }
+}
+
+/* All themes */
+:root {
+  --sans-font: Arial, Helvetica, "Helvetica Neue", sans-serif;
+  --bg-light: #d9d9d9;
+  --custom-padding: 2rem;
+}
+
+h2 {
+    padding: 0 var(--custom-padding);
+    margin-bottom: 0;
+}
+
+h3 {
+    margin-top: 0;
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 0;
+}
+
+ul > li,
+.main {
+    padding: var(--custom-padding);
+}
+
+ul > li > ul > li {
+    padding: 0;
+}
+
+ul ul {
+    margin-bottom: 2rem;
+}
+
+p {
+    font-weight: normal;
+}
+
+strong {
+    font-weight: bold;
+}
+
+.tags {
+    text-transform: capitalize;
+}
+
+ul.striped-list > li:nth-of-type(even) {
+    background-color: var(--accent-bg);
+}

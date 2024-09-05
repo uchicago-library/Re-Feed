@@ -1,0 +1,7 @@
+*.swp
+__pycache__
+config.py
+custom.py
+instance
+*.db
+venv
