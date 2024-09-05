@@ -54,7 +54,6 @@ import feedparser
 from flask import request
 from _config import app
 
-
 class FeedEntry(db.Model):
     __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
