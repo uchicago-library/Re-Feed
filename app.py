@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import click
 import feedparser
 import requests
 from flask import (
@@ -255,6 +256,23 @@ def get_feed_json():
         feed_data.append(entry_data)
 
     return jsonify(feed_data)
+
+
+@app.cli.command('fetch_feed')
+@click.argument('mode')
+def fetch_feed(mode):
+    """Fetches a JSON or RSS feed and imports entries into an SQLite database.
+
+    MODE: The type of feed to fetch. Should be "json" or "rss"."""
+    mode = mode.lower()
+    if mode == 'json':
+        fetch_json_feed()
+    elif mode == 'rss':
+        fetch_rss_feed()
+    else:
+        print(
+            'You must specify what kind of a feed to fetch. Only "json" and "rss" are recognized.'
+        )
 
 
 # Load optional overrides
