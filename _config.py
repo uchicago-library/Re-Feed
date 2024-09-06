@@ -10,6 +10,7 @@ app.config['FETCH_MODE'] = 'json'
 app.config['RSS_PUBLISHED_AT_FORMAT'] = '%a, %d %b %Y %H:%M:%S %z'
 app.config['JSON_PUBLISHED_AT_FORMAT'] = '%Y-%m-%d %H:%M:%S'
 app.config['FEED_TITLE'] = 'My Feed'
+app.config['LOGO'] = None
 
 # Load custom config if it exists
 try:

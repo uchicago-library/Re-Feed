@@ -1,6 +1,5 @@
 /* Light theme */
-@media (prefers-color-scheme: light) {
-  :root, ::backdrop {
+[data-theme="light"] {
     --bg: #fff;
     --accent-bg: #f3f3f3;
     --accent-hover: #737373;
@@ -13,12 +12,10 @@
     --preformatted: #444;
     --marked: #ffdd33;
     --disabled: #efefef;
-  }
 }
 
 /* Dark theme */
-@media (prefers-color-scheme: dark) {
-  :root, ::backdrop {
+[data-theme="dark"] {
     --bg: #222;
     --border: #a6a6a6;
     --accent: #b46a55;
@@ -29,7 +26,6 @@
     --code: #f06292;
     --preformatted: #ccc;
     --disabled: #111;
-  }
 }
 
 /* All themes */
@@ -39,6 +35,20 @@
   --custom-padding: 2rem;
 }
 
+#m-logo {
+    text-align: center;
+    margin: 0 auto;
+    max-width: 900px;
+}
+#main-logo {
+    max-width: 100%;
+    height: auto;
+}
+
+h1 {
+    font-size: 4rem;
+}
+
 h2 {
     padding: 0 var(--custom-padding);
     margin-bottom: 0;
@@ -46,6 +56,7 @@ h2 {
 
 h3 {
     margin-top: 0;
+    font-size: 1.5rem;
 }
 
 ul {
@@ -81,4 +92,8 @@ strong {
 
 ul.striped-list > li:nth-of-type(even) {
     background-color: var(--accent-bg);
+}
+
+img {
+    border-radius: 0;
 }

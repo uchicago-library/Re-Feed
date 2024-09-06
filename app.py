@@ -139,7 +139,7 @@ def fetch_json_feed():
 def index():
     entries = FeedEntry.query.all()
     entries.reverse()
-    return render_template('index.html', entries=entries)
+    return render_template('index.html', entries=entries, logo=app.config['LOGO'])
 
 
 @app.route('/static/<path:path>')
