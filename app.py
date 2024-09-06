@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy.orm import sessionmaker
 
 import click
 import feedparser
@@ -54,7 +55,7 @@ def update_or_create_change(record_id):
     Returns:
         Changes: The retrieved or newly created Changes record.
     """
-    record = Changes.query.get(record_id)
+    record = db.session.get(Changes, record_id)
 
     if record:
         record.updated = datetime.utcnow()
@@ -150,7 +151,7 @@ def send_static(path):
 @app.route('/tag_entry/<int:entry_id>', methods=['POST'])
 def tag_entry(entry_id):
     tag_name = request.form['tags'].strip().lower()
-    entry = FeedEntry.query.get(entry_id)
+    entry = db.session.get(FeedEntry, entry_id)
 
     if entry:
         tag = Tag.query.filter(Tag.name.ilike(tag_name)).first()
@@ -172,8 +173,8 @@ def tag_entry(entry_id):
 
 @app.route('/delete_tag/<int:entry_id>/<int:tag_id>', methods=['POST', 'DELETE'])
 def delete_tag(entry_id, tag_id):
-    entry = FeedEntry.query.get(entry_id)
-    tag = Tag.query.get(tag_id)
+    entry = db.session.get(FeedEntry, entry_id)
+    tag = db.session.get(Tag, tag_id)
 
     if entry and tag:
         # Remove the tag from the entry
