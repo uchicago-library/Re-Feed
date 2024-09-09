@@ -1,5 +1,6 @@
 Flask
 feedparser
+ftfy
 Flask-SQLAlchemy
 requests
 

@@ -1,5 +1,5 @@
+import html
 from datetime import datetime
-from sqlalchemy.orm import sessionmaker
 
 import click
 import feedparser
@@ -12,6 +12,7 @@ from flask import (
     send_from_directory,
     url_for,
 )
+from ftfy import fix_text
 
 from _config import app, db
 
@@ -84,15 +85,16 @@ def rfc_3339_date(date):
 def fetch_rss_feed():
     with app.app_context():
         if not app.config['RSS_FEED_URL']:
-            print('Missoing RSS_FEED_URL in config.')
+            print('Missing RSS_FEED_URL in config.')
         feed = feedparser.parse(app.config['RSS_FEED_URL'])
         feed.entries.reverse()
         for entry in feed.entries:
             existing_entry = FeedEntry.query.filter_by(feed_id=entry.id).first()
 
             if not existing_entry:  # Only add if it doesn't exist
+                title = html.escape(fix_text(entry.title, unescape_html=False))
                 rss_entry = FeedEntry(
-                    title=entry.title,
+                    title=title,
                     feed_id=entry.id,
                     link=entry.link,
                     published_at=datetime.strptime(
@@ -119,7 +121,7 @@ def fetch_json_feed():
 
                     if not existing_entry:  # Only add if it doesn't exist
                         feed_entry = FeedEntry(
-                            title=item['title'],
+                            title=fix_text(item['title']),
                             feed_id=item['id'],
                             link=item['url'],
                             published_at=datetime.strptime(
@@ -190,12 +192,37 @@ def delete_tag(entry_id, tag_id):
     return render_template('error.html', msg='Entry or tag not found!')
 
 
+def get_entries_by_tag_or_not(tag_name=None, limit=None):
+    if tag_name:
+        tag = Tag.query.filter(Tag.name.ilike(tag_name)).first()
+        if tag:
+            query = (
+                FeedEntry.query.join(FeedEntryTag)
+                .filter(FeedEntryTag.tag_id == tag.id)
+                .order_by(FeedEntry.id.desc())
+            )
+            if limit:
+                query = query.limit(limit)
+            entries = query.all()
+        else:
+            print('Tag not found!')
+            return []
+    else:
+        query = FeedEntry.query.order_by(FeedEntry.id.desc())
+        if limit:
+            query = query.limit(limit)
+        entries = query.all()
+    return entries
+
+
 @app.route('/get_feed_rss', methods=['GET'])
-def get_feed_rss():
-    entries = FeedEntry.query.all()
-    entries.reverse()
+@app.route('/get_feed_rss/tag/<string:tag_name>', methods=['GET'])
+@app.route('/get_feed_rss/tag/<string:tag_name>/<int:limit>', methods=['GET'])
+@app.route('/get_feed_rss/<int:limit>', methods=['GET'])
+def get_feed_rss(tag_name=None, limit=None):
+    entries = get_entries_by_tag_or_not(tag_name, limit)
     feed = ''
-    feed += '<?xml version="1.0" encoding="UTF-8" ?>\n'
+    feed += '<?xml version="1.0" encoding="utf-8" ?>\n'
     feed += '<rss version="2.0">\n'
     feed += '<channel>\n'
 
@@ -212,28 +239,30 @@ def get_feed_rss():
 
 
 @app.route('/get_feed_atom', methods=['GET'])
-def get_feed_atom():
+@app.route('/get_feed_atom/tag/<string:tag_name>', methods=['GET'])
+@app.route('/get_feed_atom/tag/<string:tag_name>/<int:limit>', methods=['GET'])
+@app.route('/get_feed_atom/<int:limit>', methods=['GET'])
+def get_feed_atom(tag_name=None, limit=None):
     try:
         updated = rfc_3339_date(get_change_by_id(1).updated)
     except (AttributeError):
         updated = rfc_3339_date(update_or_create_change(1).updated)
 
     feed_title = app.config['FEED_TITLE']
-    entries = FeedEntry.query.all()
-    entries.reverse()
+    entries = get_entries_by_tag_or_not(tag_name, limit)
     feed = ''
-    feed += '<?xml version="1.0" encoding="UTF-8" ?>\n'
+    feed += '<?xml version="1.0" encoding="utf-8" ?>\n'
     feed += '<feed xmlns="http://www.w3.org/2005/Atom">\n'
-    feed += f'<title>{feed_title}</title>\n'
+    feed += f'<title type="html">{feed_title}</title>\n'
     feed += f'<id>{request.base_url}</id>\n'
     feed += f'<updated>{updated}</updated>\n'
 
     for entry in entries:
         feed += '<entry>\n'
-        feed += f'<title>{entry.title}</title>\n'
+        feed += f'<title type="html">{entry.title}</title>\n'
         feed += f'<id>{entry.id}</id>\n'
         feed += f'<link href="{entry.link}" rel="alternate" type="text/html"/>\n'
-        feed += f'<description><![CDATA[ {entry.description} ]]></description>\n'
+        feed += f'<content type="html"><![CDATA[ {entry.description} ]]></content>\n'
         for tag in entry.tags:
             feed += f'<category term="{tag.name}"/>\n'
         feed += '</entry>\n'
@@ -242,9 +271,11 @@ def get_feed_atom():
 
 
 @app.route('/get_feed_json', methods=['GET'])
-def get_feed_json():
-    entries = FeedEntry.query.all()
-    entries.reverse()
+@app.route('/get_feed_json/tag/<string:tag_name>', methods=['GET'])
+@app.route('/get_feed_json/tag/<string:tag_name>/<int:limit>', methods=['GET'])
+@app.route('/get_feed_json/<int:limit>', methods=['GET'])
+def get_feed_json(tag_name=None, limit=None):
+    entries = get_entries_by_tag_or_not(tag_name, limit)
     feed_data = []
 
     for entry in entries:

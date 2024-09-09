@@ -5,7 +5,7 @@
     <ul class="striped-list">
         {% for entry in entries %}
             <li>
-                <h3><a href="{{ entry.link }}">{{ entry.title }}</a></h3>
+                <h3><a href="{{ entry.link }}">{{ entry.title | safe }}</a></h3>
                 {% if entry.description %}
                     <p>{{ entry.description | safe }}</p>
                 {% endif %}

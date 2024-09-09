@@ -12,7 +12,7 @@ Re-Feed is a simple Flask app that allows you to import `JSON` or `RSS` feeds an
 3. Create a `custom.py` if you need to customize the data model or one of the fetch or get functions.
 
 ## Configuration
-Possible settings are:
+Example settings:
 ```
 SQLALCHEMY_DATABASE_URI = 'sqlite:///re-feed.db' # Database name
 SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -22,6 +22,9 @@ FETCH_MODE = 'json' # If not JSON, will default to RSS
 RSS_PUBLISHED_AT_FORMAT = '%a, %d %b %Y %H:%M:%S %z'
 JSON_PUBLISHED_AT_FORMAT = '%Y-%m-%d %H:%M:%S'
 FEED_TITLE = 'My Feed' # Used for the Atom feed
+LOGO = '<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="50" cy="50" r="40" stroke="black" stroke-width="2" fill="lightblue" />
+</svg>'
 ```
 Date formats (`*_FORMAT`) will need need to match the date formats in the feed you're importing. Add any of these that need to be overridden, to your `config.py`.
 
@@ -37,6 +40,7 @@ This app uses `SQLAlchemy` models to create and save to an `SQLite` database, `f
 
 ## Customization
 This app was developed to work with a simple calendar events `RSS` feed and the default data model lends itself to that. It creates a `FeedEntry` database model with the following items:
+
 - `id` - Primary key, created by the app
 - `tags` - Tags, created by the app
 - `feed_id` - Unique ID from the feed item we fetch
@@ -53,6 +57,7 @@ from _config import db
 import feedparser
 from flask import request
 from _config import app
+from ftfy import fix_text
 
 class FeedEntry(db.Model):
     __table_args__ = {'extend_existing': True}
@@ -68,44 +73,50 @@ class FeedEntry(db.Model):
 def fetch_rss_feed():
     with app.app_context():
         if not app.config['RSS_FEED_URL']:
-            print('Missoing RSS_FEED_URL in config.')
+            print('Missing RSS_FEED_URL in config.')
         feed = feedparser.parse(app.config['RSS_FEED_URL'])
         feed.entries.reverse()
         for entry in feed.entries:
             existing_entry = FeedEntry.query.filter_by(feed_id=entry.id).first()
 
             if not existing_entry:  # Only add if it doesn't exist
+                title = fix_text(entry.title, unescape_html=False) # Remove default html escaping
                 rss_entry = FeedEntry(
-                    title=entry.title,
+                    title=title,
                     feed_id=entry.id,
                     link=entry.link,
                     published_at=datetime.strptime(
                         entry.published, app.config['RSS_PUBLISHED_AT_FORMAT']
                     ),
                     description=entry.get('description', ''),
-                    foobar=entry.title, # Populate the foobar field with the feed item title.
-                ) 
+                    foobar=title, # Populate the foobar field with the feed item title.
+                )
                 db.session.add(rss_entry)
+
         db.session.commit()
+
         
 @app.route('/get_custom_feed_atom', methods=['GET'])
-def get_custom_feed_atom():
+@app.route('/get_custom_feed_atom/tag/<string:tag_name>', methods=['GET'])
+@app.route('/get_custom_feed_atom/tag/<string:tag_name>/<int:limit>', methods=['GET'])
+@app.route('/get_custom_feed_atom/<int:limit>', methods=['GET'])
+def get_custom_feed_atom(tag_name=None, limit=None):
     feed_title = app.config['FEED_TITLE']
-    entries = FeedEntry.query.all()
-    entries.reverse()
+    entries = get_entries_by_tag_or_not(tag_name, limit)
     feed = ''
-    feed += '<?xml version="1.0" encoding="UTF-8" ?>\n'
+    feed += '<?xml version="1.0" encoding="utf-8" ?>\n'
     feed += '<feed xmlns="http://www.w3.org/2005/Atom">\n'
-    feed += f'<title>{feed_title}</title>\n'
+    feed += f'<title type="html">{feed_title}</title>\n'
+    feed += f'<foobar>{entry.foobar}</foobar>\n' # Add the foobar field to our Atom feed
     feed += f'<id>{request.base_url}</id>\n'
+    feed += f'<updated>{updated}</updated>\n'
 
     for entry in entries:
         feed += '<entry>\n'
-        feed += f'<title>{entry.title}</title>\n'
+        feed += f'<title type="html">{entry.title}</title>\n'
         feed += f'<id>{entry.id}</id>\n'
-        feed += f'<foobar>{entry.foobar}</foobar>\n' # Add the foobar field to our Atom feed
         feed += f'<link href="{entry.link}" rel="alternate" type="text/html"/>\n'
-        feed += f'<description><![CDATA[ {entry.description} ]]></description>\n'
+        feed += f'<content type="html"><![CDATA[ {entry.description} ]]></content>\n'
         for tag in entry.tags:
             feed += f'<category term="{tag.name}"/>\n'
         feed += '</entry>\n'
@@ -113,7 +124,7 @@ def get_custom_feed_atom():
     return feed, 200, {'Content-Type': 'application/rss+xml'}
 ```
 
-The example above shows how you could add a `foobar` field to the default `FeedEntry` model and make the `link` field optional. We then add a `fetch_rss_feed` function that would populate the `foobar` entry with the title of the feed item we're importing. Lastly we write a `get_custom_feed_atom` function that adds the `foobar` field to the feed we generate. This feed is available at http://127.0.0.1:5000/get_custom_feed_atom. The new feed will have tags if we add them in the admin interface and it will have a `foobar` field on every item. Link fields will be optional.
+The example above shows how you could add a `foobar` field to the default `FeedEntry` model and make the `link` field optional. We then add a `fetch_rss_feed` function that would populate the `foobar` entry with the title of the feed item we're importing and remove the default html escaping on the title field. Lastly we write a `get_custom_feed_atom` function that adds the `foobar` field to the feed we generate. This feed is available at http://127.0.0.1:5000/get_custom_feed_atom. The new feed will have tags if we add them in the admin interface and it will have a `foobar` field on every item. Link fields will be optional.
 
 SQLAlchemy doesn't allow us to extend data models nicely, so in some cases you might need to re-define and nullify fields that are in the original model (as in the example above). Hopefully this can be improved in the future.
 
@@ -123,3 +134,13 @@ source venv/bin/activate
 python app.p
 ```
 The tagging interface is available at: http://127.0.0.1:5000.
+
+### Endpoints
+The admin for tagging and untagging items is found here: http://127.0.0.1:5000. Re-Feed also creates the following enpoints for every feed type offered (JSON, RSS, Atom):
+
+- http://127.0.0.1:5000/get_feed_TYPE
+- http://127.0.0.1:5000/get_feed_TYPE/tag/TAG_NAME
+- http://127.0.0.1:5000/get_feed_TYPE/tag/TAG_NAME/NUMBER
+- http://127.0.0.1:5000/get_feed_TYPE/NUMBER
+
+This allows you to get the whole feed, all items tagged a certain way, or either of those limited by a number. For example, if you wanted to get an Atom feed with the five most recent items tagged with "fun", you would go to: http://127.0.0.1:5000/get_feed_atom/tag/fun/5.
