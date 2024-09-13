@@ -9,7 +9,7 @@ Re-Feed is a simple Flask app that allows you to import `JSON` or `RSS` feeds an
 ## Setup
 1. Create a `config.py` file in the root directory.
 2. Add settings to your `config.py`. At a minimum you will need `RSS_FEED_URL` or `JSON_FEED_URL`.
-3. Create a `custom.py` if you need to customize the data model or one of the fetch or get functions.
+3. Create a `custom_models.py` if you need to customize the data model for a feed or a `custom_functions.py` if you need to customize one of the fetch or get functions.
 
 ## Configuration
 Example settings:
@@ -29,9 +29,10 @@ LOGO = '<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
 Date formats (`*_FORMAT`) will need need to match the date formats in the feed you're importing. Add any of these that need to be overridden, to your `config.py`.
 
 ## API
-This app uses `SQLAlchemy` models to create and save to an `SQLite` database, `fetch_` functions to read and import feeds, and `get_` functions to generate new feeds. Any of these can be customized in your `custom.py`. If your feed is different from a simple calendar events feed and/or you need to track more data, you will likely need to customize the `FeedEntry` model, one `fetch_` function, and one `get_` function.
+This app uses `SQLAlchemy` models to create and save to an `SQLite` database, `fetch_` functions to read and import feeds, and `get_` functions to generate new feeds. Any of these can be customized in your `custom_models.py` or `custom_functions.py`. If your feed is different from a simple calendar events feed and/or you need to track more data, you will likely need to customize the `AbstractFeedEntry` model, one `fetch_` function, and one `get_` function.
 
-- `FeedEntry` - The data model for feed items. This is the data that's saved to the SQLite database.
+- `AbstractFeedEntry` - The base data model for feed items. This is the data that's saved to the SQLite database.
+- `FeedEntry` - Concrete data model that's generated from the default `AbstractFeedEntry` or the `AbstractFeedEntry` in your `custom_models.py` file.
 - `fetch_rss_feed` - Imports an RSS feed.
 - `fetch_json_feed` - Imports a JSON feed.
 - `get_feed_rss` - Generates an RSS feed.
@@ -49,27 +50,48 @@ This app was developed to work with a simple calendar events `RSS` feed and the 
 - `published_at` - Date of the feed item we fetch.
 - `description` - Description or content of the feed item we fetch.
 
-If you need to customize the `FeedEntry` model to save more fields to the database and/or map them differently, you will likely need to customize a `fetch_` method and a `get_method`. When you customize a `get_` method, **you will get a new endpoint** for your customized feed. A possible `custom.py` might look like this:
+If you need to customize the `AbstractFeedEntry` model to save more fields to the database and/or map them differently, you will likely need to customize a `fetch_` method and a `get_method`. When you customize a `get_` method, **you will get a new endpoint** for your customized feed. A possible `custom_models.py` might look like this:
+
+```
+from sqlalchemy.ext.declarative import declared_attr
+from _config import db
+from models import AbstractFeedEntry
+
+class AbstractFeedEntry(AbstractFeedEntry):
+    __abstract__ = True
+
+    # Override the link field and make it nullable
+    @declared_attr
+    def link(cls):
+        return db.Column(
+            db.String(200), nullable=True
+        )
+
+    # Add a new foobar field
+    @declared_attr
+    def foobar(cls):
+        return db.Column(
+            db.String(200), default='Rise above!', nullable=False
+        )
+```
+
+A `custom_functions.py` might look like this:
 
 ```
 from datetime import datetime
-from _config import db
 import feedparser
 from flask import request
-from _config import app
 from ftfy import fix_text
 
-class FeedEntry(db.Model):
-    __table_args__ = {'extend_existing': True}
-    id = db.Column(db.Integer, primary_key=True)
-    feed_id = db.Column(db.String(200), unique=True, nullable=False)
-    title = db.Column(db.String(200), nullable=False)
-    link = db.Column(db.String(200), nullable=True) # Override the link field and make it nullable
-    published_at = db.Column(db.DateTime, default=datetime.utcnow)
-    description = db.Column(db.Text, nullable=True)
-    tags = db.relationship('Tag', secondary='feed_entry_tag', backref='feed_entries')
-    foobar = db.Column(db.String(200), default='Rise above!', nullable=False) # Add a new foobar field
-    
+from _config import app, db
+from functions import (
+    get_change_by_id,
+    get_entries_by_tag_or_not,
+    rfc_3339_date,
+    update_or_create_change,
+)
+from models import FeedEntry
+
 def fetch_rss_feed():
     with app.app_context():
         if not app.config['RSS_FEED_URL']:
@@ -79,8 +101,8 @@ def fetch_rss_feed():
         for entry in feed.entries:
             existing_entry = FeedEntry.query.filter_by(feed_id=entry.id).first()
 
-            if not existing_entry:  # Only add if it doesn't exist
-                title = fix_text(entry.title, unescape_html=False) # Remove default html escaping
+            if not existing_entry:
+                title = fix_text(entry.title, unescape_html=False) # Remove HTML escaping on title
                 rss_entry = FeedEntry(
                     title=title,
                     feed_id=entry.id,
@@ -89,31 +111,36 @@ def fetch_rss_feed():
                         entry.published, app.config['RSS_PUBLISHED_AT_FORMAT']
                     ),
                     description=entry.get('description', ''),
-                    foobar=title, # Populate the foobar field with the feed item title.
+                    foobar=title,  # Populate the foobar field with the feed item title.
                 )
                 db.session.add(rss_entry)
 
         db.session.commit()
 
-        
+
 @app.route('/get_custom_feed_atom', methods=['GET'])
 @app.route('/get_custom_feed_atom/tag/<string:tag_name>', methods=['GET'])
 @app.route('/get_custom_feed_atom/tag/<string:tag_name>/<int:limit>', methods=['GET'])
 @app.route('/get_custom_feed_atom/<int:limit>', methods=['GET'])
 def get_custom_feed_atom(tag_name=None, limit=None):
+    try:
+        updated = rfc_3339_date(get_change_by_id(1).updated)
+    except (AttributeError):
+        updated = rfc_3339_date(update_or_create_change(1).updated)
+
     feed_title = app.config['FEED_TITLE']
     entries = get_entries_by_tag_or_not(tag_name, limit)
     feed = ''
     feed += '<?xml version="1.0" encoding="utf-8" ?>\n'
     feed += '<feed xmlns="http://www.w3.org/2005/Atom">\n'
-    feed += f'<title type="html">{feed_title}</title>\n'
-    feed += f'<foobar>{entry.foobar}</foobar>\n' # Add the foobar field to our Atom feed
+    feed += f'<title type="html">{feed_title}</title>\n' # Remove type="html" attribute
     feed += f'<id>{request.base_url}</id>\n'
     feed += f'<updated>{updated}</updated>\n'
 
     for entry in entries:
         feed += '<entry>\n'
-        feed += f'<title type="html">{entry.title}</title>\n'
+        feed += f'<title>{entry.title}</title>\n' # Remove type="html" attribute
+        feed += f'<foobar>{entry.foobar}</foobar>\n' # Add the foobar field to our Atom feed
         feed += f'<id>{entry.id}</id>\n'
         feed += f'<link href="{entry.link}" rel="alternate" type="text/html"/>\n'
         feed += f'<content type="html"><![CDATA[ {entry.description} ]]></content>\n'
@@ -124,9 +151,7 @@ def get_custom_feed_atom(tag_name=None, limit=None):
     return feed, 200, {'Content-Type': 'application/rss+xml'}
 ```
 
-The example above shows how you could add a `foobar` field to the default `FeedEntry` model and make the `link` field optional. We then add a `fetch_rss_feed` function that would populate the `foobar` entry with the title of the feed item we're importing and remove the default html escaping on the title field. Lastly we write a `get_custom_feed_atom` function that adds the `foobar` field to the feed we generate. This feed is available at http://127.0.0.1:5000/get_custom_feed_atom. The new feed will have tags if we add them in the admin interface and it will have a `foobar` field on every item. Link fields will be optional.
-
-SQLAlchemy doesn't allow us to extend data models nicely, so in some cases you might need to re-define and nullify fields that are in the original model (as in the example above). Hopefully this can be improved in the future.
+The examples above shows how you could add a `foobar` field to the default `AbstractFeedEntry` model and make the `link` field optional. We could then add a `fetch_rss_feed` function that would populate the `foobar` entry with the title of the feed item we're importing and remove the default html escaping on the title field. Lastly we write a `get_custom_feed_atom` function that adds the `foobar` field to the feed we generate. This feed is available at http://127.0.0.1:5000/get_custom_feed_atom. The new feed will have tags if we add them in the admin interface and it will have a `foobar` field on every item. Link fields will be optional.
 
 ## Running in dev mode
 ```
