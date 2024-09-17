@@ -5,8 +5,14 @@ from sqlalchemy.ext.declarative import declared_attr
 from _config import db
 
 
-# Junction table for many-to-many relationship
 class FeedEntryTag(db.Model):
+    """Association model for linking feed entries and tags.
+
+    This model represents the many-to-many relationship between
+    FeedEntry and Tag, allowing a feed entry to have multiple tags
+    and a tag to be associated with multiple feed entries.
+    """
+
     id = db.Column(db.Integer, primary_key=True)
     feed_entry_id = db.Column(
         db.Integer, db.ForeignKey('feed_entry.id'), nullable=False
@@ -15,11 +21,34 @@ class FeedEntryTag(db.Model):
 
 
 class Tag(db.Model):
+    """Represents a tag in the system.
+
+    This model corresponds to the 'tag' table in the database and
+    contains information about tags that can be associated with
+    feed entries.
+    """
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
 
 
 class AbstractFeedEntry(db.Model):
+    """Abstract base class for feed entries.
+
+    This abstract model defines common attributes and relationships
+    for feed entry models. It includes fields for ID, feed ID, title,
+    link, publication date, description, and associated tags.
+
+    Attributes:
+        id (int): The unique identifier for the feed entry.
+        feed_id (str): The unique identifier for the feed.
+        title (str): The title of the feed entry.
+        link (str): The URL link to the feed entry.
+        published_at (datetime): The publication date of the feed entry.
+        description (str): A description of the feed entry.
+        tags (list): A list of tags associated with the feed entry.
+    """
+
     __abstract__ = True
 
     @declared_attr
@@ -60,9 +89,25 @@ except ImportError:
 
 
 class FeedEntry(AbstractFeedEntry):
+    """Represents a feed entry in the system.
+
+    This class inherits from AbstractFeedEntry and represents a specific
+    feed entry with all the attributes defined in the abstract base class.
+    """
+
     pass
 
 
 class Changes(db.Model):
+    """Represents a record of changes in the system.
+
+    This model tracks updates with a unique identifier and a timestamp
+    indicating when the change was made.
+
+    Attributes:
+        id (int): The unique identifier for the change record.
+        updated (datetime): The timestamp of when the change was last updated.
+    """
+
     id = db.Column(db.Integer, primary_key=True)
     updated = db.Column(db.DateTime, default=datetime.utcnow)

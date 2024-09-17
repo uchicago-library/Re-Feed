@@ -25,6 +25,20 @@ from models import FeedEntry, Tag
 
 
 def fetch_rss_feed():
+    """Fetch and store RSS feed entries in the database.
+
+    This function retrieves the RSS feed from the URL specified in the
+    application configuration. It parses the feed, reverses the order of
+    the entries, and adds any new entries to the database if they do not
+    already exist. Each entry is stored with its title, feed ID, link,
+    publication date, and description.
+
+    If the RSS_FEED_URL is not configured, a message is printed to the
+    console indicating the missing configuration.
+
+    Returns:
+        None
+    """
     with app.app_context():
         if not app.config['RSS_FEED_URL']:
             print('Missing RSS_FEED_URL in config.')
@@ -50,6 +64,24 @@ def fetch_rss_feed():
 
 
 def fetch_json_feed():
+    """Fetch and store JSON feed entries in the database.
+
+    This function retrieves the JSON feed from the URL specified in the
+    application configuration. It sends a GET request to the JSON_FEED_URL
+    and, if the response is successful (HTTP status code 200), it parses
+    the JSON data. The function reverses the order of the entries and
+    adds any new entries to the database if they do not already exist.
+    Each entry is stored with its title, feed ID, link, publication date,
+    and description.
+
+    If the response status code is not 200, an error message is printed
+    indicating the failure to fetch the JSON feed. If there is a problem
+    with the URL (e.g., missing schema), a message is printed to the
+    console.
+
+    Returns:
+        None
+    """
     with app.app_context():
         try:
             response = requests.get(app.config['JSON_FEED_URL'])
@@ -82,6 +114,16 @@ def fetch_json_feed():
 
 @app.route('/')
 def index():
+    """Render the index page with a list of feed entries.
+
+    This function retrieves all feed entries from the database, reverses
+    their order, and renders the 'index.html' template. The template is
+    populated with the list of entries and an optional logo specified in
+    the application configuration.
+
+    Returns:
+        str: The rendered HTML template for the index page.
+    """
     entries = FeedEntry.query.all()
     entries.reverse()
     return render_template('index.html', entries=entries, logo=app.config['LOGO'])
@@ -89,11 +131,33 @@ def index():
 
 @app.route('/static/<path:path>')
 def send_static(path):
+    """Serve static files from the 'static' directory.
+
+    Args:
+        path (str): The relative path to the static file.
+
+    Returns:
+        Response: The requested static file.
+    """
     return send_from_directory('static', path)
 
 
 @app.route('/tag_entry/<int:entry_id>', methods=['POST'])
 def tag_entry(entry_id):
+    """Add a tag to a feed entry.
+
+    This function retrieves a feed entry by its ID and adds a tag to it.
+    If the tag does not exist, it creates a new tag. The tag name is
+    taken from the form data, converted to lowercase, and stripped of
+    whitespace.
+
+    Args:
+        entry_id (int): The ID of the feed entry to tag.
+
+    Returns:
+        Response: A redirect to the index page or an error page if the
+        entry is not found.
+    """
     tag_name = request.form['tags'].strip().lower()
     entry = db.session.get(FeedEntry, entry_id)
 
@@ -117,6 +181,22 @@ def tag_entry(entry_id):
 
 @app.route('/delete_tag/<int:entry_id>/<int:tag_id>', methods=['POST', 'DELETE'])
 def delete_tag(entry_id, tag_id):
+    """Remove a tag from a feed entry.
+
+    This function retrieves a feed entry and a tag by their IDs. If both
+    exist and the tag is associated with the entry, the tag is removed.
+    If the tag is not associated with the entry or if either the entry
+    or tag is not found, an error message is rendered.
+
+    Args:
+        entry_id (int): The ID of the feed entry.
+        tag_id (int): The ID of the tag to remove.
+
+    Returns:
+        Response: A redirect to the index page or an error page if the
+        entry or tag is not found, or if the tag is not associated with
+        the entry.
+    """
     entry = db.session.get(FeedEntry, entry_id)
     tag = db.session.get(Tag, tag_id)
 
@@ -139,6 +219,20 @@ def delete_tag(entry_id, tag_id):
 @app.route('/get_feed_rss/tag/<string:tag_name>/<int:limit>', methods=['GET'])
 @app.route('/get_feed_rss/<int:limit>', methods=['GET'])
 def get_feed_rss(tag_name=None, limit=None):
+    """Generate an RSS feed of feed entries.
+
+    This function retrieves feed entries, optionally filtered by a tag
+    name and/or limited to a specified number of entries. It constructs
+    and returns an RSS feed in XML format.
+
+    Args:
+        tag_name (str, optional): The name of the tag to filter entries.
+        limit (int, optional): The maximum number of entries to return.
+
+    Returns:
+        tuple: A tuple containing the RSS feed as a string, an HTTP status
+        code (200), and a content type of 'application/rss+xml'.
+    """
     entries = get_entries_by_tag_or_not(tag_name, limit)
     feed = ''
     feed += '<?xml version="1.0" encoding="utf-8" ?>\n'
@@ -162,6 +256,21 @@ def get_feed_rss(tag_name=None, limit=None):
 @app.route('/get_feed_atom/tag/<string:tag_name>/<int:limit>', methods=['GET'])
 @app.route('/get_feed_atom/<int:limit>', methods=['GET'])
 def get_feed_atom(tag_name=None, limit=None):
+    """Generate an Atom feed of feed entries.
+
+    This function retrieves feed entries, optionally filtered by a tag
+    name and/or limited to a specified number of entries. It constructs
+    and returns an Atom feed in XML format, including metadata such as
+    the feed title and last updated time.
+
+    Args:
+        tag_name (str, optional): The name of the tag to filter entries.
+        limit (int, optional): The maximum number of entries to return.
+
+    Returns:
+        tuple: A tuple containing the Atom feed as a string, an HTTP status
+        code (200), and a content type of 'application/atom+xml'.
+    """
     try:
         updated = rfc_3339_date(get_change_by_id(1).updated)
     except (AttributeError):
@@ -194,6 +303,19 @@ def get_feed_atom(tag_name=None, limit=None):
 @app.route('/get_feed_json/tag/<string:tag_name>/<int:limit>', methods=['GET'])
 @app.route('/get_feed_json/<int:limit>', methods=['GET'])
 def get_feed_json(tag_name=None, limit=None):
+    """Generate a JSON feed of feed entries.
+
+    This function retrieves feed entries, optionally filtered by a tag
+    name and/or limited to a specified number of entries. It constructs
+    and returns a JSON representation of the feed entries.
+
+    Args:
+        tag_name (str, optional): The name of the tag to filter entries.
+        limit (int, optional): The maximum number of entries to return.
+
+    Returns:
+        Response: A JSON response containing a list of feed entries.
+    """
     entries = get_entries_by_tag_or_not(tag_name, limit)
     feed_data = []
 
@@ -212,9 +334,22 @@ def get_feed_json(tag_name=None, limit=None):
 @app.cli.command('fetch_feed')
 @click.argument('mode')
 def fetch_feed(mode):
-    """Fetches a JSON or RSS feed and imports entries into an SQLite database.
+    """Fetch and import feed entries into the SQLite database.
 
-    MODE: The type of feed to fetch. Should be "json" or "rss"."""
+    This command fetches entries from a specified feed type (JSON or RSS)
+    and imports them into the SQLite database. The mode argument determines
+    the type of feed to fetch.
+
+    Args:
+        mode (str): The type of feed to fetch. Must be either "json" or "rss".
+
+    Usage:
+        To fetch a JSON feed:
+            flask fetch_feed json
+
+        To fetch an RSS feed:
+            flask fetch_feed rss
+    """
     mode = mode.lower()
     if mode == 'json':
         fetch_json_feed()
