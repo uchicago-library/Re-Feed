@@ -1,5 +1,5 @@
 # Re-Feed
-Re-Feed is a simple Flask app that allows you to import `JSON` or `RSS` feeds and tag items in them. It then generates a new `JSON` or `RSS` feed with the tags included. It also allows you to customize and re-map things in the original feeds if you should need to. For example, you could add data to the titles in the feed or pull them from a different element in the original feed.
+Re-Feed is a simple Flask app that allows you to import `JSON` or `RSS` feeds and tag items in them. It generates a new `JSON` or `RSS` feed with the tags included. It also allows you to customize and re-map things in the original feeds if you should need to. For example, you could add data to the titles in the feed or pull them from a different element in the original feed.
 
 ## Installation
 1. Clone the repo.
@@ -8,7 +8,7 @@ Re-Feed is a simple Flask app that allows you to import `JSON` or `RSS` feeds an
 
 ## Setup
 1. Create a `config.py` file in the root directory.
-2. Add settings to your `config.py`. At a minimum you will need `RSS_FEED_URL` or `JSON_FEED_URL`.
+2. Add settings to your `config.py`. At a minimum you will need a `SECRET_KEY`, `DEV_USERNAME`, `DEV_PASSWORD`, and a `RSS_FEED_URL` or `JSON_FEED_URL`.
 3. Create a `custom_models.py` if you need to customize the data model for a feed or a `custom_functions.py` if you need to customize one of the fetch or get functions.
 
 ## Configuration
@@ -22,6 +22,9 @@ FETCH_MODE = 'json' # If not JSON, will default to RSS
 RSS_PUBLISHED_AT_FORMAT = '%a, %d %b %Y %H:%M:%S %z'
 JSON_PUBLISHED_AT_FORMAT = '%Y-%m-%d %H:%M:%S'
 FEED_TITLE = 'My Feed' # Used for the Atom feed
+SECRET_KEY = 'your_dev_secret_key'
+DEV_USERNAME = 'user'
+DEV_PASSWORD = 'password'
 LOGO = '<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
   <circle cx="50" cy="50" r="40" stroke="black" stroke-width="2" fill="lightblue" />
 </svg>'
@@ -158,10 +161,10 @@ The examples above shows how you could add a `foobar` field to the default `Abst
 source venv/bin/activate
 python app.p
 ```
-The tagging interface is available at: http://127.0.0.1:5000.
+If you set a `DEV_USERNAME` and `DEV_PASSWORD` in your configuration, you can log in at: http://127.0.0.1:5000. After logging in, you will be redirected to the tagging interface at http://127.0.0.1:5000/admin.
 
 ### Endpoints
-The admin for tagging and untagging items is found here: http://127.0.0.1:5000. Re-Feed also creates the following enpoints for every feed type offered (JSON, RSS, Atom):
+The admin for tagging and untagging items is found here: http://127.0.0.1:5000/admin. Re-Feed also creates the following enpoints for every feed type offered (JSON, RSS, Atom):
 
 - http://127.0.0.1:5000/get_feed_TYPE
 - http://127.0.0.1:5000/get_feed_TYPE/tag/TAG_NAME

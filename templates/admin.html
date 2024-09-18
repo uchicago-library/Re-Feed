@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2 class="feed-head">Entries</h2>
+    <ul class="striped-list">
+        {% for entry in entries %}
+            <li>
+                <h3><a href="{{ entry.link }}">{{ entry.title | safe }}</a></h3>
+                {% if entry.description %}
+                    <p>{{ entry.description | safe }}</p>
+                {% endif %}
+                <form action="/tag_entry/{{ entry.id }}" method="post">
+                    <input type="text" name="tags" placeholder="Add tag" required>
+                    <button type="submit">Tag</button>
+                </form>
+                {% if entry.tags %}
+                    <p class="tags"><strong>Current Tags</strong>: {{ entry.tags | map(attribute='name') | join(', ') }}</p>
+                    <ul>
+                        {% for tag in entry.tags %}
+                            <li>
+                                <span class="tags">{{ tag.name }}</span>
+                                <form action="/delete_tag/{{ entry.id }}/{{ tag.id }}" method="post" onsubmit="return confirm('Are you sure you want to delete this tag?');">
+                                    <input type="hidden" name="_method" value="DELETE">
+                                    <button type="submit">Delete Tag</button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>[No tags]</p>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}

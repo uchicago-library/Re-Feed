@@ -5,12 +5,21 @@ import click
 import feedparser
 import requests
 from flask import (
+    flash,
     jsonify,
     redirect,
     render_template,
     request,
     send_from_directory,
     url_for,
+)
+from flask_login import (
+    LoginManager,
+    UserMixin,
+    current_user,
+    login_required,
+    login_user,
+    logout_user,
 )
 from ftfy import fix_text
 
@@ -22,6 +31,35 @@ from functions import (
     update_or_create_change,
 )
 from models import FeedEntry, Tag
+
+app.secret_key = app.config['SECRET_KEY']
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+
+class User(UserMixin):
+    """Represents a user in the system.
+
+    Attributes:
+        id (str): The unique identifier for the user, set to the username.
+    """
+
+    def __init__(self, username):
+        self.id = username
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    """Load a user by their unique identifier.
+
+    Args:
+        user_id (str): The unique identifier of the user to load.
+
+    Returns:
+        User: An instance of the User class corresponding to the user_id.
+    """
+    return User(user_id)
 
 
 def fetch_rss_feed():
@@ -112,8 +150,70 @@ def fetch_json_feed():
             print('Missing or bad URL in config.')
 
 
-@app.route('/')
-def index():
+@app.route('/', methods=['GET', 'POST'])
+def login():
+    """Handles user login and authentication.
+
+    This function supports both local authentication for development
+    and Okta authentication based on the environment configuration.
+    If the user is already authenticated, they are redirected to the
+    admin page. On a POST request, it checks the provided username
+    and password against the development credentials. If they match,
+    a user session is created and the user is redirected to the admin
+    page. If the credentials are invalid, an error message is flashed.
+
+    Returns:
+        Response: The rendered template for the login page or a
+        redirect to the admin page.
+    """
+    try:
+        dev_username = app.config['DEV_USERNAME']
+        dev_password = app.config['DEV_PASSWORD']
+    except (KeyError):
+        return render_template('index.html', logo=app.config['LOGO'])
+
+    if current_user.is_authenticated:
+        return redirect(url_for('admin'))
+
+    # No Okta, local authentication for development
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        if username == dev_username and password == dev_password:
+            user_obj = User(username)
+            login_user(user_obj)  # This creates a session for the user
+            return redirect(url_for('admin'))
+        else:
+            flash('Invalid username or password')
+
+    # Okta
+    if app.config['AUTH_MODE'] == 'okta':
+        # Authenticate with Okta
+        pass
+
+    return render_template('index.html', logo=app.config['LOGO'])
+
+
+@app.route('/logout')
+@login_required
+def logout():
+    """Logs out the current user and redirects to the login page.
+
+    This function terminates the user session and ensures that the
+    user is logged out. It is protected by the `login_required`
+    decorator, which means only authenticated users can access it.
+
+    Returns:
+        Response: A redirect to the login page.
+    """
+    logout_user()
+    return redirect(url_for('login'))
+
+
+@app.route('/admin')
+@login_required
+def admin():
     """Render the index page with a list of feed entries.
 
     This function retrieves all feed entries from the database, reverses
@@ -126,7 +226,7 @@ def index():
     """
     entries = FeedEntry.query.all()
     entries.reverse()
-    return render_template('index.html', entries=entries, logo=app.config['LOGO'])
+    return render_template('admin.html', entries=entries, logo=app.config['LOGO'])
 
 
 @app.route('/static/<path:path>')
@@ -174,9 +274,11 @@ def tag_entry(entry_id):
             db.session.commit()
 
         update_or_create_change(1)
-        return redirect(url_for('index'))
+        return redirect(url_for('admin'))
 
-    return render_template('error.html', msg='Entry not found!')
+    return render_template(
+        'error.html', msg='Entry not found!', logo=app.config['LOGO']
+    )
 
 
 @app.route('/delete_tag/<int:entry_id>/<int:tag_id>', methods=['POST', 'DELETE'])
@@ -206,12 +308,16 @@ def delete_tag(entry_id, tag_id):
             entry.tags.remove(tag)
             db.session.commit()
             update_or_create_change(1)
-            return redirect(url_for('index'))
+            return redirect(url_for('admin'))
         else:
             return render_template(
-                'error.html', msg='Tag not associated with this entry!'
+                'error.html',
+                msg='Tag not associated with this entry!',
+                logo=app.config['LOGO'],
             )
-    return render_template('error.html', msg='Entry or tag not found!')
+    return render_template(
+        'error.html', msg='Entry or tag not found!', logo=app.config['LOGO']
+    )
 
 
 @app.route('/get_feed_rss', methods=['GET'])
