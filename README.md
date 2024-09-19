@@ -10,6 +10,7 @@ Re-Feed is a simple Flask app that allows you to import `JSON` or `RSS` feeds an
 1. Create a `config.py` file in the root directory.
 2. Add settings to your `config.py`. At a minimum you will need a `SECRET_KEY`, `DEV_USERNAME`, `DEV_PASSWORD`, and a `RSS_FEED_URL` or `JSON_FEED_URL`.
 3. Create a `custom_models.py` if you need to customize the data model for a feed or a `custom_functions.py` if you need to customize one of the fetch or get functions.
+4. Create a `custom.css` file in the `static` directory if you wish to override styles in the admin.
 
 ## Configuration
 Example settings:

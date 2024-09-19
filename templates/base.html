@@ -6,6 +6,10 @@
         <title>Re-Feed</title>
         <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
         <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+        {% if has_custom_css %}
+            <link rel="stylesheet" href="{{ url_for('static', filename='custom.css') }}">
+        {% endif %}
+        <script src="{{ url_for('static', filename='main.js') }}"></script>
     </head>
     <body data-theme="light">
         <header>

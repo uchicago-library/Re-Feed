@@ -12,6 +12,7 @@
     --preformatted: #444;
     --marked: #ffdd33;
     --disabled: #efefef;
+    --delete: #737373;
 }
 
 /* Dark theme */
@@ -75,6 +76,7 @@ ul > li > ul > li {
 }
 
 ul ul {
+    margin-top: 1rem;
     margin-bottom: 2rem;
 }
 
@@ -90,8 +92,10 @@ strong {
     font-weight: bold;
 }
 
-.tags {
+.tag-name {
     text-transform: capitalize;
+    font-weight: bold;
+    color: #333;
 }
 
 ul.striped-list > li:nth-of-type(even) {
@@ -100,4 +104,8 @@ ul.striped-list > li:nth-of-type(even) {
 
 img {
     border-radius: 0;
+}
+
+.delete {
+    background: var(--delete);
 }

@@ -1,4 +1,5 @@
 import html
+import os
 from datetime import datetime
 
 import click
@@ -169,7 +170,7 @@ def login():
     try:
         dev_username = app.config['DEV_USERNAME']
         dev_password = app.config['DEV_PASSWORD']
-    except (KeyError):
+    except KeyError:
         return render_template('index.html', logo=app.config['LOGO'])
 
     if current_user.is_authenticated:
@@ -224,9 +225,16 @@ def admin():
     Returns:
         str: The rendered HTML template for the index page.
     """
+    custom_css = os.path.join(app.static_folder, 'custom.css')
+    custom_css_exists = os.path.exists(custom_css)
     entries = FeedEntry.query.all()
     entries.reverse()
-    return render_template('admin.html', entries=entries, logo=app.config['LOGO'])
+    return render_template(
+        'admin.html',
+        entries=entries,
+        logo=app.config['LOGO'],
+        has_custom_css=custom_css_exists,
+    )
 
 
 @app.route('/static/<path:path>')
@@ -255,8 +263,14 @@ def tag_entry(entry_id):
         entry_id (int): The ID of the feed entry to tag.
 
     Returns:
-        Response: A redirect to the index page or an error page if the
-        entry is not found.
+        Response:
+            - If the entry is found and the tag is successfully added,
+              it returns a JSON response containing the tag ID if the
+              request was made via AJAX. Otherwise if the request was
+              a normal POST (non-AJAX) it redirects to the admin index
+              page.
+            - If the entry is not found, it returns an error page with
+              a message indicating the entry was not found.
     """
     tag_name = request.form['tags'].strip().lower()
     entry = db.session.get(FeedEntry, entry_id)
@@ -274,6 +288,9 @@ def tag_entry(entry_id):
             db.session.commit()
 
         update_or_create_change(1)
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify(tag.id)
         return redirect(url_for('admin'))
 
     return render_template(
@@ -379,7 +396,7 @@ def get_feed_atom(tag_name=None, limit=None):
     """
     try:
         updated = rfc_3339_date(get_change_by_id(1).updated)
-    except (AttributeError):
+    except AttributeError:
         updated = rfc_3339_date(update_or_create_change(1).updated)
 
     feed_title = app.config['FEED_TITLE']
