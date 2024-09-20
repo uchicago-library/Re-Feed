@@ -4,7 +4,27 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 {% endblock %}
 {% block content %}
-    <h2 class="feed-head">Entries</h2>
+    <div id="refresh-head">
+        <h2 class="feed-head">Entries</h2>
+        <form id="refresh-feed" action="{{ url_for('refresh_feed') }}" method="post" onsubmit="showSpinner()">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <button type="submit">Refresh Feed <span class="spinner" id="spinner"></span></button>
+        </form>
+        <script>
+            function showSpinner() {
+                document.getElementById('spinner').style.display = 'inline-block';
+            }
+        </script>
+    </div>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <ul>
+                {% for message in messages %}
+                    <li class="error">{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
     <ul class="striped-list">
         {% for entry in entries %}
             <li>

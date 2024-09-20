@@ -1,5 +1,6 @@
 import html
 import os
+import subprocess
 from datetime import datetime
 
 import click
@@ -531,6 +532,23 @@ def get_feed_json(tag_name=None, limit=None):
         feed_data.append(entry_data)
 
     return jsonify(feed_data)
+
+
+@app.route('/refresh_feed', methods=['POST'])
+def refresh_feed():
+    """Refresh the feed based on the configured FETCH_MODE."""
+    fetch_mode = app.config.get('FETCH_MODE', 'json').lower()
+
+    if fetch_mode not in ['json', 'rss']:
+        flash('Invalid feed type configured. Must be "json" or "rss".')
+        return redirect(url_for('admin'))
+
+    try:
+        subprocess.run(['flask', 'fetch_feed', fetch_mode], check=True)
+    except subprocess.CalledProcessError:
+        flash(f'Failed to refresh {fetch_mode} feed.')
+
+    return redirect(url_for('admin'))
 
 
 @app.cli.command('fetch_feed')
