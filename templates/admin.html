@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 
+{% block head %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+{% endblock %}
 {% block content %}
     <h2 class="feed-head">Entries</h2>
     <ul class="striped-list">
@@ -10,6 +13,8 @@
                     <p>{{ entry.description | safe }}</p>
                 {% endif %}
                 <form action="/tag_entry/{{ entry.id }}" method="post">
+                    {{ tag_form.csrf_token }}
+                    {{ tag_form.name }}
                     <input type="text" name="tags" placeholder="Add tag" required>
                     <button class="add-tag" type="submit">Add Tag</button>
                 </form>
@@ -19,6 +24,7 @@
                             <li>
                                 <span class="tag-name tag-name-{{ tag.name }}">{{ tag.name }}</span>
                                 <form action="/delete_tag/{{ entry.id }}/{{ tag.id }}" method="post">
+                                    {{ tag_form.csrf_token }}
                                     <input type="hidden" name="_method" value="DELETE">
                                     <button type="submit" class="delete delete-{{ tag.name }}">Delete Tag</button>
                                 </form>

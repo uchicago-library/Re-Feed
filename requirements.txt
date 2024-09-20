@@ -1,5 +1,6 @@
 Flask
 Flask-Login
+Flask-WTF
 feedparser
 ftfy
 Flask-SQLAlchemy

@@ -10,6 +10,7 @@
             <link rel="stylesheet" href="{{ url_for('static', filename='custom.css') }}">
         {% endif %}
         <script src="{{ url_for('static', filename='main.js') }}"></script>
+        {% block head %}{% endblock %}
     </head>
     <body data-theme="light">
         <header>

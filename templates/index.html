@@ -4,6 +4,7 @@
     <div class="main">
         <h2>Login</h2>
         <form method="POST" class="login-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <label for="username">Username:</label>
             <input type="text" name="username" required>
             <br>
@@ -16,7 +17,7 @@
             {% if messages %}
                 <ul>
                     {% for message in messages %}
-                        <li>{{ message }}</li>
+                        <li class="error">{{ message }}</li>
                     {% endfor %}
                 </ul>
             {% endif %}

@@ -22,7 +22,11 @@ from flask_login import (
     login_user,
     logout_user,
 )
+from flask_wtf import FlaskForm
+from flask_wtf.csrf import CSRFError, CSRFProtect
 from ftfy import fix_text
+from wtforms import PasswordField, StringField, SubmitField
+from wtforms.validators import DataRequired, Length
 
 from _config import app, db
 from functions import (
@@ -34,6 +38,7 @@ from functions import (
 from models import FeedEntry, Tag
 
 app.secret_key = app.config['SECRET_KEY']
+csrf = CSRFProtect(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -48,6 +53,38 @@ class User(UserMixin):
 
     def __init__(self, username):
         self.id = username
+
+
+class TagForm(FlaskForm):
+    """
+    Form for adding tags.
+
+    Attributes:
+        tags (StringField): Required field for entering tags.
+        submit (SubmitField): Button to submit the form.
+    """
+
+    tags = StringField('Tags', validators=[DataRequired(), Length(max=50)])
+    submit = SubmitField('Add Tag')
+
+
+class LoginForm(FlaskForm):
+    """
+    A form for user login.
+
+    This form collects the username and password from the user and includes
+    a submit button to initiate the login process. Both fields are required
+    for form submission.
+
+    Attributes:
+        username (StringField): The field for the user's username.
+        password (PasswordField): The field for the user's password.
+        submit (SubmitField): The button to submit the form.
+    """
+
+    username = StringField('Username', validators=[DataRequired(), Length(max=20)])
+    password = PasswordField('Password', validators=[DataRequired(), Length(max=100)])
+    submit = SubmitField('Login')
 
 
 @login_manager.user_loader
@@ -176,10 +213,13 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('admin'))
 
+    form = LoginForm()
+
     # No Okta, local authentication for development
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+    if request.method == 'POST' and form.validate_on_submit():
+
+        username = form.username.data
+        password = form.password.data
 
         if username == dev_username and password == dev_password:
             user_obj = User(username)
@@ -225,6 +265,7 @@ def admin():
     Returns:
         str: The rendered HTML template for the index page.
     """
+    form = TagForm()
     custom_css = os.path.join(app.static_folder, 'custom.css')
     custom_css_exists = os.path.exists(custom_css)
     entries = FeedEntry.query.all()
@@ -234,6 +275,7 @@ def admin():
         entries=entries,
         logo=app.config['LOGO'],
         has_custom_css=custom_css_exists,
+        tag_form=form,
     )
 
 
@@ -248,6 +290,23 @@ def send_static(path):
         Response: The requested static file.
     """
     return send_from_directory('static', path)
+
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    """Handle CSRF (Cross-Site Request Forgery) errors.
+
+    This function is triggered when a CSRFError is raised in the application.
+    It renders an error template with a message describing the error and
+    includes a logo from the application configuration.
+
+    Args:
+        e (CSRFError): The CSRFError instance containing details about the error.
+
+    Returns:
+        str: Rendered HTML of the error template with the error message and logo.
+    """
+    return render_template('error.html', msg=e.description, logo=app.config['LOGO'])
 
 
 @app.route('/tag_entry/<int:entry_id>', methods=['POST'])
@@ -266,13 +325,33 @@ def tag_entry(entry_id):
         Response:
             - If the entry is found and the tag is successfully added,
               it returns a JSON response containing the tag ID if the
-              request was made via AJAX. Otherwise if the request was
-              a normal POST (non-AJAX) it redirects to the admin index
+              request was made via AJAX. Otherwise, if the request was
+              a normal POST (non-AJAX), it redirects to the admin index
               page.
             - If the entry is not found, it returns an error page with
               a message indicating the entry was not found.
+            - If the form validation fails, it returns an error response
+              in JSON format for AJAX requests or renders an error page
+              for non-AJAX requests, indicating the validation issue.
+
+    Raises:
+        Exception: Any exceptions raised during database operations
+        will be handled by the Flask error handling mechanism, which
+        may return a generic error response.
     """
-    tag_name = request.form['tags'].strip().lower()
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    form = TagForm()
+    if not form.validate_on_submit():
+        error_msg = 'The form did not validate. Your tag name is probably too long.'
+        if is_ajax:
+            return jsonify({'error': error_msg}), 400
+        return render_template(
+            'error.html',
+            msg=error_msg,
+            logo=app.config['LOGO'],
+        )
+
+    tag_name = form.tags.data.strip().lower()
     entry = db.session.get(FeedEntry, entry_id)
 
     if entry:
@@ -289,7 +368,7 @@ def tag_entry(entry_id):
 
         update_or_create_change(1)
 
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if is_ajax:
             return jsonify(tag.id)
         return redirect(url_for('admin'))
 

@@ -46,6 +46,10 @@
     height: auto;
 }
 
+.error {
+    color: #a4343a;
+}
+
 h1 {
     font-size: 4rem;
 }

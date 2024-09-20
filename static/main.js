@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Tag entries
     const tagForms = document.querySelectorAll('form[action^="/tag_entry/"]');
+    const deleteCSRFToken = document.querySelector('input[name="csrf_token"]').value;
     tagForms.forEach(form => {
         form.addEventListener('submit', function(event) {
             event.preventDefault();
@@ -19,7 +20,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (response.ok) {
                     return response.json();
                 }
-                throw new Error('Network response was not OK.');
+                return response.json().then(json => {
+                    throw new Error(json.error);
+                });
+            }).catch(error => {
+                const errorDiv = document.createElement('div');
+                errorDiv.classList.add('error');
+                errorDiv.innerHTML = `<strong>${error.message}</strong>`
+                form.appendChild(errorDiv);
+                throw new Error(error.message);
             })
             .then(tagId => {
                 // Create a new tag element and append it to the DOM
@@ -29,6 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 newTagItem.innerHTML = `
                     <span class="tag-name tag-name-${tagName.toLowerCase()}">${tagName}</span>
                     <form action="/delete_tag/${entryId}/${tagId}" method="post">
+                        <input type="hidden" name="csrf_token" value="${deleteCSRFToken}">
                         <input type="hidden" name="_method" value="DELETE">
                         <button type="submit" class="delete delete-${tagName.toLowerCase()}">Delete Tag</button>
                     </form>
