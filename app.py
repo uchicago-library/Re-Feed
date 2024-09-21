@@ -209,7 +209,9 @@ def login():
         dev_username = app.config['DEV_USERNAME']
         dev_password = app.config['DEV_PASSWORD']
     except KeyError:
-        return render_template('index.html', logo=app.config['LOGO'])
+        return render_template(
+            'index.html', logo=app.config['LOGO'], f_logo=app.config['FOOTER_LOGO']
+        )
 
     if current_user.is_authenticated:
         return redirect(url_for('admin'))
@@ -234,7 +236,9 @@ def login():
         # Authenticate with Okta
         pass
 
-    return render_template('index.html', logo=app.config['LOGO'])
+    return render_template(
+        'index.html', logo=app.config['LOGO'], f_logo=app.config['FOOTER_LOGO']
+    )
 
 
 @app.route('/logout')
@@ -275,6 +279,7 @@ def admin():
         'admin.html',
         entries=entries,
         logo=app.config['LOGO'],
+        f_logo=app.config['FOOTER_LOGO'],
         has_custom_css=custom_css_exists,
         tag_form=form,
     )
@@ -307,7 +312,12 @@ def handle_csrf_error(e):
     Returns:
         str: Rendered HTML of the error template with the error message and logo.
     """
-    return render_template('error.html', msg=e.description, logo=app.config['LOGO'])
+    return render_template(
+        'error.html',
+        msg=e.description,
+        logo=app.config['LOGO'],
+        f_logo=app.config['FOOTER_LOGO'],
+    )
 
 
 @app.route('/tag_entry/<int:entry_id>', methods=['POST'])
@@ -350,6 +360,7 @@ def tag_entry(entry_id):
             'error.html',
             msg=error_msg,
             logo=app.config['LOGO'],
+            f_logo=app.config['FOOTER_LOGO'],
         )
 
     tag_name = form.tags.data.strip().lower()
@@ -374,7 +385,10 @@ def tag_entry(entry_id):
         return redirect(url_for('admin'))
 
     return render_template(
-        'error.html', msg='Entry not found!', logo=app.config['LOGO']
+        'error.html',
+        msg='Entry not found!',
+        logo=app.config['LOGO'],
+        f_logo=app.config['FOOTER_LOGO'],
     )
 
 
@@ -411,9 +425,13 @@ def delete_tag(entry_id, tag_id):
                 'error.html',
                 msg='Tag not associated with this entry!',
                 logo=app.config['LOGO'],
+                f_logo=app.config['FOOTER_LOGO'],
             )
     return render_template(
-        'error.html', msg='Entry or tag not found!', logo=app.config['LOGO']
+        'error.html',
+        msg='Entry or tag not found!',
+        logo=app.config['LOGO'],
+        f_logo=app.config['FOOTER_LOGO'],
     )
 
 

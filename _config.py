@@ -12,6 +12,7 @@ app.config['JSON_PUBLISHED_AT_FORMAT'] = '%Y-%m-%d %H:%M:%S'
 app.config['SECRET_KEY'] = 'sfksdfkjseeir-4r5fsdf-unffs3ksf'
 app.config['FEED_TITLE'] = 'My Feed'
 app.config['LOGO'] = None
+app.config['FOOTER_LOGO'] = None
 
 # Load custom config if it exists
 try:

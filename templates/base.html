@@ -18,5 +18,8 @@
             <h1>Re-Feed</h1>
         </header>
         {% block content %}{% endblock %}
+        <footer>
+            {% if f_logo %}<div id="f-logo">{{ f_logo|safe }}</div> {% endif %}
+        </footer>
     </body>
 </html>
