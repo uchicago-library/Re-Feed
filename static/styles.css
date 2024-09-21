@@ -162,3 +162,13 @@ img {
 .delete {
     background: var(--delete);
 }
+
+.toggle-button span {
+    color: #007396;
+    cursor: pointer;
+}
+
+.toggle-button span:hover {
+    color: #002a3a;
+    text-decoration: underline;
+}

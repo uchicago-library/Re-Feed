@@ -86,3 +86,34 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+document.addEventListener("DOMContentLoaded", function() {
+    const descriptions = document.querySelectorAll('.description');
+
+    descriptions.forEach(desc => {
+        const fullText = desc.textContent;
+        const maxLength = 500;
+        const truncatedText = fullText.length > maxLength ?
+            fullText.slice(0, fullText.lastIndexOf(' ', maxLength)) + '...' : fullText;
+
+        desc.textContent = truncatedText;
+
+        if (fullText.length > maxLength) {
+            const toggleButton = document.createElement('span');
+            const showMoreTxt = ' <span>(Show more)</span>';
+            toggleButton.innerHTML = showMoreTxt;
+            toggleButton.classList.add('toggle-button');
+            desc.parentNode.insertBefore(toggleButton, desc.nextSibling);
+
+            toggleButton.addEventListener('click', function() {
+                if (desc.textContent === truncatedText) {
+                    desc.textContent = fullText;
+                    toggleButton.innerHTML = ' <span>(Show less)</span>';
+                } else {
+                    desc.textContent = truncatedText;
+                    toggleButton.innerHTML = showMoreTxt;
+                }
+            });
+        }
+    });
+});

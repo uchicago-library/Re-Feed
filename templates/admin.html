@@ -30,7 +30,7 @@
             <li>
                 <h3><a href="{{ entry.link }}">{{ entry.title | safe }}</a></h3>
                 {% if entry.description %}
-                    <p>{{ entry.description | safe }}</p>
+                    <p><span class="description">{{ entry.description | safe }}</span></p>
                 {% endif %}
                 <form action="/tag_entry/{{ entry.id }}" method="post">
                     {{ tag_form.csrf_token }}
