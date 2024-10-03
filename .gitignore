@@ -1,8 +1,8 @@
 *.swp
 __pycache__
 config.py
-*custom*.py
-*custom.css
+# *custom*.py
+# *custom.css
 instance
 *.db
 venv

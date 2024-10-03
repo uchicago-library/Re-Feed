@@ -1,0 +1,32 @@
+/* Science */
+.tag-name-science {
+    color: #002a3a;
+}
+.delete-science {
+    background: #007396;
+}
+
+/* Law */
+.tag-name-law {
+    color: #643335;
+}
+.delete-law {
+    background: #a4343a;
+}
+
+/* CDS */
+.tag-name-cds {
+    color: #41273b;
+    text-transform: uppercase;
+}
+.delete-cds {
+    background: #59315f;
+}
+
+/* Dissertation */
+.tag-name-dissertation {
+    color: #13301c;
+}
+.delete-dissertation {
+    background: #789d4a;
+}
